@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <node name="gazebo_model_odom_pubish_node"
+        pkg="wamv_description"
+        type="get_gazebo_model_odometry.py" respawn="false"
+        output="screen" args="">
+  </node>
+</launch>

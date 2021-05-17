@@ -11,6 +11,12 @@ The SRC folder contain all the required packages. Aditionally, Install turtlebot
 
 The Gym folder contains TD3_v1, TD3_v2, ddpg_v2, deepq_v2, and human_exp.
 
+TD3_v1 is the basic version of the TD3 algorithm.
+
+TD3_v2 is the extended version of TD3 algorithm.
+
+ddpg_v2 and deepq_v2 are the baseline Deep Deterministic Q-Learning and Deep Q-Learning algothms used for comparision with our algorith.
+
 # API for Learning Algorithm
 
 try.py for the training of different learning algorithm for 10 different seeds

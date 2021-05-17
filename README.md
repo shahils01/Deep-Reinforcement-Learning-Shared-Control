@@ -7,9 +7,9 @@ Shared control of mobile robots integrates manual input with auxiliary autonomou
 Install all the dependent package based on 
 https://www.processon.com/view/link/5e399ebae4b03e660716b193
 
-Copy openai_ros, vmrc and turtlebot folder to the work space you created
+The SRC folder contain all the required packages. Aditionally, Install turtlebot the packages.
 
-Copy TD3_v1, TD3_v2, ddpg_v2, deepq_v2, and human_exp to you desire place
+The Gym folder contains TD3_v1, TD3_v2, ddpg_v2, deepq_v2, and human_exp.
 
 # API for Learning Algorithm
 

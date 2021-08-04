@@ -19,6 +19,7 @@ import time
 '''
 with Manually preprocessed U and lidar readings
 '''
+global data_collect
 class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
     def __init__(self):
         """
@@ -119,10 +120,62 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
 
         ############################## goal ##############################################
         self.goal_position = Pose()
-        self.f = open('/home/i2rlab/RL_ws/src/turtlebot/turtlebot_gazebo/worlds/goal/model.sdf','r')
+        self.f = open('/home/i2rlab/shahil_files/shahil_RL_ws_new/src/turtlebot/turtlebot_gazebo/worlds/goal/model.sdf','r')
         self.sdff = self.f.read()
         self.n_d = 0
-        self.xy = numpy.array([[8.1,-1],[8.2,-5],[9,4.5],[2,1],[0.5,-1],[6.5,5],[8.2,-5],[0,1],[7.3,-2.5],[0.5,-1.5]])
+        self.goal_space()
+        #self.xy = numpy.array([[8.1,-1],[8.2,-5],[9,4.5],[2,1],[0.5,-1],[6.5,5],[8.2,-5],[0,1],[7.3,-2.5],[0.5,-1.5],[-8.2,5],[6,-8.2],[-7,-7]])
+        #self.xy = numpy.array([-8.1,-7.0])
+
+        ############################## Obstacle ##########################################
+        self.angle=numpy.linspace(-179,179,180)/180*numpy.pi
+        self.cos = numpy.cos(self.angle)
+        self.sin = numpy.sin(self.angle)
+        ############################## Human Model ######################################
+        config = tf.ConfigProto(gpu_options=tf.GPUOptions(allow_growth=True))
+        self.sess = tf.Session(config=config)
+        self.S1 = tf.placeholder(tf.float32, [None, 5], 'S1')
+        self.S2 = tf.placeholder(tf.float32, [None, 198,1], 'S2')
+        self.keep_prob = tf.placeholder(tf.float32)
+        self.a_predict = self.build_c(self.S1,self.S2,self.keep_prob)
+        self.loader()
+        self.goal_space()
+        #self.joy = self.get_joy()
+
+    def loader(self):
+        loader= tf.train.Saver()
+        loader.restore(self.sess,tf.train.latest_checkpoint('Human_model_3'))
+
+    def build_c(self,S1,S2,keep_prob):
+        orth_init = tf.initializers.orthogonal(gain=numpy.sqrt(2))
+        net1 = tf.compat.v1.layers.conv1d(S2, filters=32, kernel_size=19, strides=1, padding='valid', activation=tf.nn.relu, trainable=True,kernel_initializer=orth_init,name='net1')
+        net2 = tf.compat.v1.layers.conv1d(net1, filters=32, kernel_size=8, strides=4, padding='valid', activation=tf.nn.relu, trainable=True,kernel_initializer=orth_init,name='net2')
+        net3 = tf.compat.v1.layers.conv1d(net2, filters=64, kernel_size=4, strides=4, padding='valid', activation=tf.nn.relu, trainable=True,kernel_initializer=orth_init,name='net3')
+        net4 = tf.compat.v1.layers.conv1d(net3, filters=64, kernel_size=3, strides=2, padding='valid', activation=tf.nn.relu, trainable=True,kernel_initializer=orth_init,name='net4')
+        net4_flat = tf.reshape(net4,[-1,5*64])
+        net5 = tf.layers.dense(net4_flat, 512, activation=tf.nn.relu, trainable=True,kernel_initializer=orth_init,name='net5')
+        net6 = tf.layers.dense(net5, 64, trainable=True, name='net6')
+        net7 = tf.contrib.layers.layer_norm(net6, center=True, scale=True)
+        net8 = tf.nn.relu(net7)
+        net9_input = tf.concat([S1, net8], 1)
+
+        net9 = tf.layers.dense(net9_input, 256, activation=tf.nn.relu, name='l1', trainable=True, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
+        drop_out9 = tf.nn.dropout(net9, keep_prob)
+        net10 = tf.layers.dense(drop_out9,256, activation=tf.nn.relu,name='l2',trainable=True, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
+        drop_out10 = tf.nn.dropout(net10, keep_prob)
+        net11 = tf.layers.dense(drop_out10,128, activation=tf.nn.relu,name='l3',trainable=True, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
+        drop_out11 = tf.nn.dropout(net11, keep_prob)
+        a = tf.layers.dense(drop_out11,2,trainable=True,activation=tf.tanh)
+        return tf.multiply(a, [0.5,1], name='scaled_a')
+
+    def choose_action(self,s):
+        bs1 = s[:, :5]
+        #bs2 = numpy.hstack((s[:, 5:],s[:, -18:])).reshape([-1,198,1])
+        bs2 = s[:,5:].reshape([-1,198,1])
+        a = self.sess.run(self.a_predict, {self.S1: bs1,self.S2: bs2,self.keep_prob:1})
+        print("original a:",a)
+        #return a
+        return a[0]
 
 
     def _set_init_pose(self):
@@ -163,23 +216,34 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
         """
         ratio=list(ratio)
         rospy.logdebug("Start Set Action ==>"+str(ratio))
-        print("ratio:",ratio)
-        if self.joy_linear==0 and self.joy_angular==0:
-            linear_speed=0
-            angular_speed=0
+        joy = self.get_joy()
+
+        #print("ratio:",ratio)
+        #if joy.linear.x==0 and joy.angular.z==0:          #Condition to get input from human agent
+        linear_speed=self.joy_linear
+        angular_speed=self.joy_angular
             #self.angular_old = angular_speed
-        elif abs(self.joy_linear)<0.2 or abs(self.theta_bt_uh_ob)> 1.3 or self.e_norm>1.5:
-            linear_speed=self.joy_linear
-            angular_speed=self.joy_angular
+
+        #else:
+            #linear_speed = joy.linear.x
+            #angular_speed = joy.angular.z
+
+        '''elif abs(self.joy_linear)<0.2 or abs(self.theta_bt_uh_ob)> 1.3 or self.e_norm>1.5:
+
+            linear_speed = joy.linear.x             # human input
+            angular_speed = joy.angular.z
             #angular_speed = 0.6*self.theta_dot+0.4*angular_speed
             #self.angular_old = angular_speed
         else:
-            linear_speed = ratio[0]*self.joy_linear+ratio[1]*self.a_ao[0,0]+ratio[2]*self.a_c[0,0]+ratio[3]*self.a_cc[0,0]
-            angular_speed = ratio[0]*self.joy_angular+ratio[1]*self.a_ao[1,0]+ratio[2]*self.a_c[1,0]+ratio[3]*self.a_cc[1,0]
+            #linear_speed = ratio[0]*self.joy_linear+ratio[1]*self.a_ao[0,0]+ratio[2]*self.a_c[0,0]+ratio[3]*self.a_cc[0,0]
+            #angular_speed = ratio[0]*self.joy_angular+ratio[1]*self.a_ao[1,0]+ratio[2]*self.a_c[1,0]+ratio[3]*self.a_cc[1,0]
+            linear_speed=self.joy_linear
+            angular_speed=self.joy_angular'''
             #angular_speed = 0.6*self.theta_dot+0.4*angular_speed
             #self.angular_old = angular_speed
         # We tell TurtleBot2 the linear and angular speed to set to execute
         self.move_base(linear_speed, angular_speed, epsilon=0.05, update_rate=10)
+        self.u_b = numpy.array([linear_speed,angular_speed])
         rospy.logdebug("END Set Action ==>"+str(ratio))
 
     def _get_obs(self):
@@ -200,6 +264,7 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
         # We get the odometry so that SumitXL knows where it is.
         odometry = self.get_odom()
         x_position = odometry.pose.pose.position.x
+        #print('x_position',x_position)
         y_position = odometry.pose.pose.position.y
         base_orientation_quat = odometry.pose.pose.orientation
         base_roll, base_pitch, base_yaw = self.get_orientation_euler(base_orientation_quat)
@@ -208,23 +273,49 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
 
         ###################human input ##############################
         joy = self.get_joy()
-        self.joy_linear = joy.linear.x
-        self.joy_angular = joy.angular.z
+        if joy.linear.x > 0 or joy.angular.z > 0:
+            self.joy_linear = joy.linear.x
+            self.joy_angular = joy.angular.z
         ###################human agent ##################################
-        # xdiff = self.desired_point.x - x_position
-        # ydiff = self.desired_point.y - y_position
-        # observations = [round(base_yaw, 2),round(v, 2),round(self.theta_dot, 2),round(xdiff, 2),round(ydiff, 2)]#+ discretized_laser_scan
-        # s = numpy.array([observations])
-        # a = self.choose_action(s)
-        # self.joy_linear = a[0]
-        # self.joy_angular = a[1]
+        else:
+            print('I am here')
+            xdiff = self.desired_point.x - x_position
+            ydiff = self.desired_point.y - y_position
+            observations = [round(base_yaw, 2),round(v, 2),round(self.theta_dot, 2),round(xdiff, 2),round(ydiff, 2)]#+ discretized_laser_scan
+            observations = numpy.append(observations,numpy.array(discretized_laser_scan))
+            observations = numpy.append(observations,numpy.array(discretized_laser_scan[:18]))
+            s = numpy.array([observations])
+            a = self.choose_action(s)
+            print('a[0]: ',a[0])
+            self.joy_linear = a[0]
+            self.joy_angular = a[1]
         ###################obstacle avoidance###########################################
         tran = numpy.array([[numpy.cos(base_yaw),-numpy.sin(base_yaw)],[numpy.sin(base_yaw),numpy.cos(base_yaw)]]).dot(numpy.array([[1,0],[0,0.1]]))
         self.u_gtg = tran.dot(numpy.array([[self.joy_linear],[self.joy_angular]]))
         self.obstacle_avoidance()
         # We round to only two decimals to avoid very big Observation space
+
+        ################################################ Data Collection for Human agent Training ########################################################################
+        #is_data_needed = numpy.array([base_yaw,v,self.theta_dot,self.joy_linear,self.joy_angular,self.desired_point.x-(x_position),self.desired_point.y-(y_position)])
+
+        if joy.linear.x > 0 or joy.angular.z > 0:
+            del_x = (self.desired_point.x-(x_position))
+            del_y = (self.desired_point.y-(y_position))
+            laser_scan_recorded = numpy.append(discretized_laser_scan,discretized_laser_scan[0])
+            #data_needed = numpy.array(["%10.3e"%(base_yaw),"%10.3e"%(v),"%10.3e"%(self.theta_dot),"%10.3e"%(del_x),"%10.3e"%(del_y)])#.encode()    # save the needed data in form of string
+            data_needed = numpy.array([(base_yaw),(v),(self.theta_dot),(del_x),(del_y)])
+            data_needed = numpy.concatenate((data_needed,laser_scan_recorded),axis=0)
+            #data_needed = numpy.append(data_needed,"%10.3e"%(self.joy_linear),"%10.3e"%(self.joy_angular))
+            data_needed = numpy.append(data_needed,(joy.linear.x))
+            data_needed = numpy.append(data_needed,(joy.angular.z))
+            #print( data_needed)
+
+            with open("scaled_house_data_test.dat", "a", newline='') as f:
+                #f.write(data_needed+b"\n")           # write the data to the file
+                f.write(str(data_needed).replace('\n','').replace('[','').replace(']','')+'\n')
         ################################################  Change Observations  ########################################################################################
         observations = [round(x_position, 2),round(y_position, 2),round(base_yaw, 2),round(v, 2),round(self.theta_dot, 2),round(self.joy_linear, 2),round(self.joy_angular, 2)]+discretized_laser_scan+[self.e_norm, round(self.theta_bt_uh_ob,2)]
+
         #print("Observations==>"+observations)
         rospy.logdebug("Observations==>"+str(observations))
         rospy.logdebug("END Get Observation ==>")
@@ -256,7 +347,7 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
         self.a_ao = numpy.array([[1,0],[0,1/0.115]]).dot(numpy.array([[numpy.cos(-yaw),-numpy.sin(-yaw)],[numpy.sin(-yaw),numpy.cos(-yaw)]])).dot(u_ao)
         self.a_c = numpy.array([[1,0],[0,1/0.115]]).dot(numpy.array([[numpy.cos(-yaw),-numpy.sin(-yaw)],[numpy.sin(-yaw),numpy.cos(-yaw)]])).dot(u_c)
         self.a_cc = numpy.array([[1,0],[0,1/0.115]]).dot(numpy.array([[numpy.cos(-yaw),-numpy.sin(-yaw)],[numpy.sin(-yaw),numpy.cos(-yaw)]])).dot(u_cc)
-        print("u_ao:",u_ao)
+        #print("u_ao:",u_ao)
         self.limitu()
         self.theta_bt_uh_ob = abs(numpy.arctan2(self.u_gtg[1,0],self.u_gtg[0,0])-orientation)
         if self.theta_bt_uh_ob > numpy.pi:
@@ -274,7 +365,8 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
 
     def _is_done(self, observations):
         if self._episode_done:
-            rospy.logerr("TurtleBot2 is Too Close to wall==>")
+            #rospy.logerr("TurtleBot2 is Too Close to wall==>")
+            pass
         else:
             #rospy.logerr("TurtleBot2 didnt crash at least ==>")
             current_position = Point()
@@ -284,9 +376,9 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
             #current_thetadot = observations[4]
             current_position.z = 0.0
             MAX_X = 10
-            MIN_X = -2
-            MAX_Y = 7
-            MIN_Y = -7
+            MIN_X = -10
+            MAX_Y = 10
+            MIN_Y = -10
 
             # We see if we are outside the Learning Space
 
@@ -372,7 +464,8 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
         rospy.logdebug("Cumulated_reward=" + str(self.cumulated_reward))
         self.cumulated_steps += 1
         rospy.logdebug("Cumulated_steps=" + str(self.cumulated_steps))
-        return round(reward,2)
+        #return round(reward,2)
+        return reward
 
 
     # Internal TaskEnv Methods
@@ -416,7 +509,7 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
         """
 
         is_in_desired_pos = False
-        print(self.get_distance_from_desired_point(current_position))
+        #print(self.get_distance_from_desired_point(current_position))
         is_in_desired_pos = self.get_distance_from_desired_point(current_position) <= epsilon
         '''
         x_pos_plus = self.desired_point.x + epsilon
@@ -475,9 +568,13 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
             #self.obstacle2_msg.pose.position.x= random.uniform(4.5,7.5)
             #lw = 1.5-abs(self.obstacle2_msg.pose.position.x-6)
             #self.obstacle2_msg.pose.position.y= random.uniform(-lw,lw)
+            n = random.randint(0,self.xy.shape[0]-1)
+            self.desired_point.x = self.xy[n,0]
+            self.desired_point.y = self.xy[n,1]
 
-            self.desired_point.x = self.xy[self.n_d,0]
-            self.desired_point.y = self.xy[self.n_d,1]
+            #self.desired_point.x = float(numpy.random.uniform(low=-1.5, high=9, size=1))
+            #self.desired_point.y = float(numpy.random.uniform(low=-5.5, high=6, size=1))
+
         rospy.wait_for_service('gazebo/spawn_sdf_model')
         self.goal_position.position.x = self.desired_point.x
         self.goal_position.position.y = self.desired_point.y
@@ -515,13 +612,89 @@ class TurtleBot2HumanModelEnv(turtlebot2_joy_env.TurtleBot2Env):
 
     def get_statemsg(self):
         if self.success:
-            if self.n_d==0:
-                self.state_msg.pose.position.x = self.xy[4,0]
-                self.state_msg.pose.position.y = self.xy[4,1]
-            else:
-                self.state_msg.pose.position.x = self.xy[self.n_d-1,0]
-                self.state_msg.pose.position.y = self.xy[self.n_d-1,1]
-            goal_position=numpy.array([self.desired_point.x,self.desired_point.y])
+            n = random.randint(0,self.xy.shape[0]-1)
+            self.state_msg.pose.position.x = self.xy[n,0]
+            self.state_msg.pose.position.y = self.xy[n,1]
+            #self.state_msg.pose.position.x = numpy.random.uniform(low=-1.5, high=9, size=1)
+            #self.state_msg.pose.position.y = numpy.random.uniform(low=-5.5, high=6, size=1)
+
+            '''goal_position=numpy.array([self.desired_point.x,self.desired_point.y])
+            while numpy.linalg.norm(goal_position-numpy.array([self.state_msg.pose.position.x,self.state_msg.pose.position.y]))<5:
+                n = random.randint(0,self.xy.shape[0]-1)
+                self.state_msg.pose.position.x = self.xy[n,0]
+                self.state_msg.pose.position.y = self.xy[n,1]
+                print("try new robot position")'''
             D = random.uniform(0,360)
             r = R.from_euler('z', D, degrees=True)
             self.state_msg.pose.orientation.x, self.state_msg.pose.orientation.y, self.state_msg.pose.orientation.z, self.state_msg.pose.orientation.w = r.as_quat()
+
+    def goal_space(self):
+        X = []
+        Y = []
+
+        X,Y = numpy.mgrid[8:9:0.1, -6:-0.2:0.1]                 # mesh for bottom left room
+        self.xy = numpy.vstack((X.flatten(), Y.flatten())).T
+        X = []
+        Y = []
+
+        X,Y = numpy.mgrid[4.1:7.3:0.1, -6:-4.7:0.1]                 # mesh for bottom left room
+        self.xy = numpy.append(self.xy,numpy.vstack((X.flatten(), Y.flatten())).T, axis=0)
+        X = []
+        Y = []
+
+        X,Y = numpy.mgrid[4.1:7.3:0.1, -2.5:0.4:0.1]                 # mesh for bottom left room
+        self.xy = numpy.append(self.xy,numpy.vstack((X.flatten(), Y.flatten())).T, axis=0)
+        X = []
+        Y = []
+
+        X,Y = numpy.mgrid[4.1:5.8:0.1, -4.2:-2.9:0.1]                 # mesh for bottom left room
+        self.xy = numpy.append(self.xy,numpy.vstack((X.flatten(), Y.flatten())).T, axis=0)
+        X = []
+        Y = []
+
+        X,Y = numpy.mgrid[3.7:6.1:0.1, 1.0:6.3:0.1]                 # mesh for middle room
+        self.xy = numpy.append(self.xy,numpy.vstack((X.flatten(), Y.flatten())).T, axis=0)
+        X = []
+        Y = []
+
+        X,Y = numpy.mgrid[8.1:9:0.1, 1.6:6.3:0.1]                 # mesh for bottom right room
+        self.xy = numpy.append(self.xy,numpy.vstack((X.flatten(), Y.flatten())).T, axis=0)
+        X = []
+        Y = []
+
+        X,Y = numpy.mgrid[-0.9:2.5:0.1, 4.2:6.3:0.1]                 # mesh for top right room
+        self.xy = numpy.append(self.xy,numpy.vstack((X.flatten(), Y.flatten())).T, axis=0)
+        X = []
+        Y = []
+
+        X,Y = numpy.mgrid[-0.9:2.8:0.1, -2.9:0.2:0.1]                 # mesh for top left room
+        self.xy = numpy.append(self.xy,numpy.vstack((X.flatten(), Y.flatten())).T, axis=0)
+        X = []
+        Y = []
+
+        X,Y = numpy.mgrid[-0.3:1.4:0.1, 0.6:2.4:0.1]                 # mesh for top left room
+        self.xy = numpy.append(self.xy,numpy.vstack((X.flatten(), Y.flatten())).T, axis=0)
+        X = []
+        Y = []
+
+        X,Y = numpy.mgrid[0:2.8:0.1, -5.9:-4.4:0.1]                 # mesh for top left room
+        self.xy = numpy.append(self.xy,numpy.vstack((X.flatten(), Y.flatten())).T, axis=0)
+
+
+    '''def goal_space(self):
+        X =[]
+        Y =[]
+        for i in numpy.arange(0,1.8,0.1):
+            X11,Y11 = numpy.mgrid[i:i+0.1:0.1, -(4.13+2/3.5*i):-1.5:0.1]
+            X12,Y12 = numpy.mgrid[i:i+0.1:0.1, 1.5:(4.13+2/3.5*i):0.1]
+            X = numpy.hstack((X, X11.flatten(), X12.flatten()))
+            Y = numpy.hstack((Y, Y11.flatten(), Y12.flatten()))
+
+        X21,Y21 = numpy.mgrid[7.5:8.5:0.1, -5.5:-4.9:0.1]
+        X22,Y22 = numpy.mgrid[7.5:8.5:0.1, -2:1.6:0.1]
+        X23,Y23 = numpy.mgrid[7.5:8.5:0.1, 4.5:5.6:0.1]
+        xy1 = numpy.vstack((X, Y)).T
+        xy21 = numpy.vstack((X21.flatten(), Y21.flatten())).T
+        xy22 = numpy.vstack((X22.flatten(), Y22.flatten())).T
+        xy23 = numpy.vstack((X23.flatten(), Y23.flatten())).T
+        self.xy=numpy.vstack((xy1,xy21,xy22,xy23))'''

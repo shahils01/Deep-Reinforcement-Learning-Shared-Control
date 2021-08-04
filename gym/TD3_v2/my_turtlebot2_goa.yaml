@@ -1,5 +1,5 @@
 turtlebot2: #namespace
-    ros_ws_abspath: "/home/i2rlab/RL_ws"
+    ros_ws_abspath: "/home/i2rlab/shahil_files/shahil_RL_ws_new"
     running_step: 0.04 # amount of time the control will be executed
     pos_step: 0.016     # increment in position for each command
 

@@ -196,6 +196,16 @@ def RegisterOpenAI_Ros_Env(task_env, timestep_limit_per_episode=10000):
         # import our training environment
         from openai_ros.task_envs.turtlebot2 import turtlebot2_goal_continuous_human_model_shared_v1
 
+    elif task_env == 'MyTurtleBot2HumanModel-v2':
+
+        register(
+            id=task_env,
+            entry_point='openai_ros.task_envs.turtlebot2.turtlebot2_goal_continuous_human_model_shared_v2:TurtleBot2HumanModelEnv',
+            max_episode_steps=timestep_limit_per_episode,
+        )
+        # import our training environment
+        from openai_ros.task_envs.turtlebot2 import turtlebot2_goal_continuous_human_model_shared_v1
+
     elif task_env == 'RealTurtlebot-v0':
 
         register(

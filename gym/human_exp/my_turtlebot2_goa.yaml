@@ -1,0 +1,39 @@
+turtlebot2: #namespace
+    ros_ws_abspath: "/home/i2rlab/shahil_files/shahil_RL_ws_new"
+    running_step: 0.04 # amount of time the control will be executed
+    pos_step: 0.016     # increment in position for each command
+
+    n_actions: 3 # We have 3 actions, Forwards,TurnLeft,TurnRight,Backwards
+
+
+    speed_step: 1.0 # Time to wait in the reset phases
+
+    linear_forward_speed: 0.5 # Spwwed for ging fowards
+    linear_turn_speed: 0.5 # Lienare speed when turning
+    angular_speed: 1 # Angular speed when turning Left or Right
+    init_linear_forward_speed: 0.0 # Initial linear speed in which we start each episode
+    init_linear_turn_speed: 0.0 # Initial angular speed in shich we start each episode
+
+    new_ranges: 9 # How many laser readings we jump in each observation reading, the bigger the less laser resolution
+    min_range: 0.5 # Minimum meters below wich we consider we have crashed
+    max_laser_value: 6 # Value considered Ok, no wall
+    min_laser_value: 0 # Value considered there is an obstacle or crashed
+
+    desired_pose:
+      x: 2.0
+      y: 0.0
+      z: 0.0
+
+    forwards_reward: -2 # Points Given to go forwards
+    turn_reward: -2 # Points Given to turn as action
+    end_episode_points: 1000 # Points given when ending an episode
+
+    #qlearn parameters
+    max_timesteps: 300000 # Maximum time steps of all the steps done throughout all the episodes
+    buffer_size: 50000 # size of the replay buffer
+    lr: 1e-3 # learning rate for adam optimizer
+    exploration_fraction: 0.1 # fraction of entire training period over which the exploration rate is annealed
+    exploration_final_eps: 0.02 # final value of random action probability
+    print_freq: 1 # how often (Ex: 1 means every episode, 2 every two episode we print ) to print out training progress set to None to disable printing
+
+    reward_task_learned: 1200

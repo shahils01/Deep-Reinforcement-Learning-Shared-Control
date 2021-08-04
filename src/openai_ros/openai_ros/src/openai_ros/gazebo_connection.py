@@ -8,9 +8,9 @@ from std_msgs.msg import Float64
 from geometry_msgs.msg import Vector3
 
 class GazeboConnection():
-    
+
     def __init__(self, start_init_physics_parameters, reset_world_or_sim):
-        
+
         self.unpause = rospy.ServiceProxy('/gazebo/unpause_physics', Empty)
         self.pause = rospy.ServiceProxy('/gazebo/pause_physics', Empty)
         self.reset_simulation_proxy = rospy.ServiceProxy('/gazebo/reset_simulation', Empty)
@@ -36,9 +36,9 @@ class GazeboConnection():
             self.pause()
         except rospy.ServiceException as e:
             print ("/gazebo/pause_physics service call failed")
-            
+
         rospy.logdebug("PAUSING FINISH")
-        
+
     def unpauseSim(self):
         rospy.logdebug("UNPAUSING START")
         rospy.wait_for_service('/gazebo/unpause_physics')
@@ -46,10 +46,10 @@ class GazeboConnection():
             self.unpause()
         except rospy.ServiceException as e:
             print ("/gazebo/unpause_physics service call failed")
-        
+
         rospy.logdebug("UNPAUSING FiNISH")
-        
-    
+
+
     def resetSim(self):
         """
         This was implemented because some simulations, when reseted the simulation
@@ -67,7 +67,7 @@ class GazeboConnection():
             rospy.logerr("NO RESET SIMULATION SELECTED")
         else:
             rospy.logerr("WRONG Reset Option:"+str(self.reset_world_or_sim))
-    
+
     def resetSimulation(self):
         rospy.wait_for_service('/gazebo/reset_simulation')
         try:
@@ -91,14 +91,14 @@ class GazeboConnection():
             self.init_physics_parameters()
         else:
             rospy.logerr("NOT Initialising Simulation Physics Parameters")
-        
+
     def init_physics_parameters(self):
         """
         We initialise the physics parameters of the simulation, like gravity,
         friction coeficients and so on.
         """
         self._time_step = Float64(0.001)
-        self._max_update_rate = Float64(1000.0)
+        self._max_update_rate = Float64(3000.0)
 
         self._gravity = Vector3()
         self._gravity.x = 0.0
@@ -118,7 +118,7 @@ class GazeboConnection():
         self._ode_config.max_contacts = 20
 
         self.update_gravity_call()
-        
+
 
     def update_gravity_call(self):
 

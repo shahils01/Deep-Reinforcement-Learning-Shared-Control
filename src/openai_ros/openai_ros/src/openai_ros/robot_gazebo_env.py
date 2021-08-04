@@ -50,6 +50,7 @@ class RobotGazeboEnv(gym.Env):
         obs = self._get_obs()
         done = self._is_done(obs)
         info = {}
+        print("######### I am in step #############")
         reward = self._compute_reward(obs, done)
         self.cumulated_episode_reward += reward
 
@@ -182,4 +183,3 @@ class RobotGazeboEnv(gym.Env):
         and extract information from the simulation.
         """
         raise NotImplementedError()
-

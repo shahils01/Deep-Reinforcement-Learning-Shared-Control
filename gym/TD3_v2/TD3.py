@@ -98,8 +98,8 @@ class td3(object):
 
     def _build_a(self, s1, s2, reuse=None, custom_getter=None):
         trainable = True if reuse is None else False
-        #orth_init = tf.initializers.orthogonal(gain=np.sqrt(2))
-        '''with tf.variable_scope('Actor', reuse=reuse, custom_getter=custom_getter):
+        orth_init = tf.initializers.orthogonal(gain=np.sqrt(2))
+        with tf.variable_scope('Actor', reuse=reuse, custom_getter=custom_getter):
             net1 = tf.compat.v1.layers.conv1d(s2, filters=32, kernel_size=19, strides=1, padding='valid', activation=tf.nn.relu, trainable=trainable,kernel_initializer=orth_init,name='net1')
             net2 = tf.compat.v1.layers.conv1d(net1, filters=32, kernel_size=8, strides=4, padding='valid', activation=tf.nn.relu, trainable=trainable,kernel_initializer=orth_init,name='net2')
             net3 = tf.compat.v1.layers.conv1d(net2, filters=64, kernel_size=4, strides=2, padding='valid', activation=tf.nn.relu, trainable=trainable,kernel_initializer=orth_init,name='net3')
@@ -118,37 +118,11 @@ class td3(object):
             net7 = tf.nn.relu(net7)
             net8 = tf.layers.dense(net7, self.a_dim, trainable=trainable,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3,maxval=3e-3))
             a =tf.nn.softmax(net8)
-            return a,net8'''
-
-        #trainable = True if reuse is None else False
-        with tf.variable_scope('Actor', reuse=reuse, custom_getter=custom_getter):
-            net1 = tf.layers.dense(s2, 256, activation=tf.nn.relu, trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003), name='net1')
-            net2 = tf.layers.dense(net1, 512, activation=tf.nn.relu, name='net2', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net3 = tf.layers.dense(net2, 512, activation=tf.nn.relu, name='net3', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net4 = tf.layers.dense(net3, 256, activation=tf.nn.relu, name='net4', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net5 = tf.layers.dense(net4, 128, activation=tf.nn.relu, name='net5', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net6 = tf.layers.dense(net5, 64,trainable=trainable,activation=tf.nn.relu, name='net6')
-            #net5_input = tf.concat([S1, net4], 1)
-
-            net7 = tf.layers.dense(s1, 256, activation=tf.nn.relu, name='net7', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            #drop_out5 = tf.nn.dropout(net5, keep_prob)
-            net8 = tf.layers.dense(net7,256, activation=tf.nn.relu,name='net8',trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            #drop_out6 = tf.nn.dropout(net6, keep_prob)
-            net9 = tf.layers.dense(net8,32, activation=tf.nn.relu,name='net9',trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            #drop_out7 = tf.nn.dropout(net7, keep_prob)
-
-            net10_input = tf.concat([net9, net6], 1)
-            net10 = tf.layers.dense(net10_input, 256, activation=tf.nn.relu, name='net10', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net11 = tf.layers.dense(net10, 128, activation=tf.nn.relu, name='net11', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net12 = tf.layers.dense(net11, 16,trainable=trainable,activation=tf.nn.relu, name='net13')
-
-            net13 = tf.layers.dense(net12, 1, trainable=trainable,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3,maxval=3e-3),name='q_val')
-            a =tf.nn.softmax(net13)
-            return a,net13
+            return a,net8
 
     def _build_c1(self, s1, s2, a, reuse=None, custom_getter=None):
         trainable = True if reuse is None else False
-        '''orth_init = tf.initializers.orthogonal(gain=np.sqrt(2))
+        orth_init = tf.initializers.orthogonal(gain=np.sqrt(2))
         with tf.variable_scope('Critic1', reuse=reuse, custom_getter=custom_getter):
             net1 = tf.compat.v1.layers.conv1d(s2, filters=32, kernel_size=19, strides=1, padding='valid', activation=tf.nn.relu, trainable=trainable,kernel_initializer=orth_init,name='net1')
             net2 = tf.compat.v1.layers.conv1d(net1, filters=32, kernel_size=8, strides=4, padding='valid', activation=tf.nn.relu, trainable=trainable,kernel_initializer=orth_init,name='net2')
@@ -166,34 +140,11 @@ class td3(object):
             net7 = tf.layers.dense(net7, 16, trainable=trainable,name='net7_')
             net7 = tf.contrib.layers.layer_norm(net7, center=True, scale=True)
             net7 = tf.nn.relu(net7)
-            return tf.layers.dense(net7, 1, trainable=trainable,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3,maxval=3e-3),name='q_val')  # Q(s,a)'''
-
-        with tf.variable_scope('Critic1', reuse=reuse, custom_getter=custom_getter):
-            net1 = tf.layers.dense(s2, 256, activation=tf.nn.relu, name='net1', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net2 = tf.layers.dense(net1, 512, activation=tf.nn.relu, name='net2', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net3 = tf.layers.dense(net2, 512, activation=tf.nn.relu, name='net3', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net4 = tf.layers.dense(net3, 256, activation=tf.nn.relu, name='net4', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net5 = tf.layers.dense(net4, 128, activation=tf.nn.relu, name='net5', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net6 = tf.layers.dense(net5, 64,trainable=trainable,activation=tf.nn.relu, name='net6')
-            #net5_input = tf.concat([S1, net4], 1)
-
-            net7 = tf.layers.dense(s1, 256, activation=tf.nn.relu, name='net7', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            #drop_out5 = tf.nn.dropout(net5, keep_prob)
-            net8 = tf.layers.dense(net7,256, activation=tf.nn.relu,name='net8',trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            #drop_out6 = tf.nn.dropout(net6, keep_prob)
-            net9 = tf.layers.dense(net8,32, activation=tf.nn.relu,name='net9',trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            #drop_out7 = tf.nn.dropout(net7, keep_prob)
-
-            net10_input = tf.concat([net9, a, net6], 1)
-            net10 = tf.layers.dense(net10_input, 256, activation=tf.nn.relu, name='net10', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net11 = tf.layers.dense(net10, 128, activation=tf.nn.relu, name='net11', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net12 = tf.layers.dense(net11, 16,trainable=trainable,activation=tf.nn.relu, name='net13')
-
-            return net13 = tf.layers.dense(net12, 1, trainable=trainable,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3,maxval=3e-3),name='q_val')
+            return tf.layers.dense(net7, 1, trainable=trainable,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3,maxval=3e-3),name='q_val')  # Q(s,a)
 
     def _build_c2(self, s1, s2, a, reuse=None, custom_getter=None):
         trainable = True if reuse is None else False
-        '''orth_init = tf.initializers.orthogonal(gain=np.sqrt(2))
+        orth_init = tf.initializers.orthogonal(gain=np.sqrt(2))
         with tf.variable_scope('Critic2', reuse=reuse, custom_getter=custom_getter):
             net1 = tf.compat.v1.layers.conv1d(s2, filters=32, kernel_size=19, strides=1, padding='valid', activation=tf.nn.relu, trainable=trainable,kernel_initializer=orth_init,name='net1')
             net2 = tf.compat.v1.layers.conv1d(net1, filters=32, kernel_size=8, strides=4, padding='valid', activation=tf.nn.relu, trainable=trainable,kernel_initializer=orth_init,name='net2')
@@ -211,30 +162,7 @@ class td3(object):
             net7 = tf.layers.dense(net7, 16, trainable=trainable,name='net7_')
             net7 = tf.contrib.layers.layer_norm(net7, center=True, scale=True)
             net7 = tf.nn.relu(net7)
-            return tf.layers.dense(net7, 1, trainable=trainable,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3,maxval=3e-3),name='q_val')  # Q(s,a)'''
-
-        with tf.variable_scope('Critic2', reuse=reuse, custom_getter=custom_getter):
-            net1 = tf.layers.dense(s2, 256, activation=tf.nn.relu, name='net1', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net2 = tf.layers.dense(net1, 512, activation=tf.nn.relu, name='net2', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net3 = tf.layers.dense(net2, 512, activation=tf.nn.relu, name='net3', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net4 = tf.layers.dense(net3, 256, activation=tf.nn.relu, name='net4', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net5 = tf.layers.dense(net4, 128, activation=tf.nn.relu, name='net5', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net6 = tf.layers.dense(net5, 64,trainable=trainable,activation=tf.nn.relu, name='net6')
-            #net5_input = tf.concat([S1, net4], 1)
-
-            net7 = tf.layers.dense(s1, 256, activation=tf.nn.relu, name='net7', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            #drop_out5 = tf.nn.dropout(net5, keep_prob)
-            net8 = tf.layers.dense(net7,256, activation=tf.nn.relu,name='net8',trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            #drop_out6 = tf.nn.dropout(net6, keep_prob)
-            net9 = tf.layers.dense(net8,32, activation=tf.nn.relu,name='net9',trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            #drop_out7 = tf.nn.dropout(net7, keep_prob)
-
-            net10_input = tf.concat([net9, a, net6], 1)
-            net10 = tf.layers.dense(net10_input, 256, activation=tf.nn.relu, name='net10', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net11 = tf.layers.dense(net10, 128, activation=tf.nn.relu, name='net11', trainable=trainable, kernel_regularizer=tf.contrib.layers.l2_regularizer(0.003))
-            net12 = tf.layers.dense(net11, 16,trainable=trainable,activation=tf.nn.relu, name='net13')
-
-            return net13 = tf.layers.dense(net12, 1, trainable=trainable,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3,maxval=3e-3),name='q_val')
+            return tf.layers.dense(net7, 1, trainable=trainable,kernel_initializer=tf.random_uniform_initializer(minval=-3e-3,maxval=3e-3),name='q_val')  # Q(s,a)
 
     def saver(self):
         saver = tf.train.Saver()

@@ -15,7 +15,7 @@ TD3_v1 is the basic version of the TD3 algorithm.
 
 TD3_v2 is the extended version of TD3 algorithm.
 
-ddpg_v2 and deepq_v2 are the baseline Deep Deterministic Q-Learning and Deep Q-Learning algothms used for comparision with our algorith.
+ddpg_v2 and deepq_v2 are the baseline Deep Deterministic Q-Learning and Deep Q-Learning algothms used for comparision with our algorithm.
 
 # API for Learning Algorithm
 

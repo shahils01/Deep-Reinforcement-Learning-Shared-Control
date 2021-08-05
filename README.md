@@ -8,22 +8,6 @@ The SRC folder contain all the required packages. Aditionally, Install turtlebot
 
 The Gym folder contains human_exp which includes the human agent and TD3X based shared control learning algorithms. 
 
-# API for Learning Algorithm
-
-try.py for the training of different learning algorithm for 10 different seeds
-
-plot.py for the plot of reward, average reward for last x expisode, and reward in evaluation loop
-
-# APT for Human Subject Experiment
-
-agent_human_familar.py used to familar with the control
-
-agent_human_experiment.py for the real experiment
-
-sign.py for the sign
-
-analysis.py for data analysis
-
 # Workflow
 
 roscore
